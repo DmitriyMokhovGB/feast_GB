@@ -9,6 +9,7 @@ from typing import List, Optional
 import pandas as pd
 import psutil
 from dateutil import parser
+from datetime import datetime
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.logger import logger
@@ -109,7 +110,7 @@ def get_app(
     app = FastAPI(lifespan=lifespan)
 
     async def get_body(request: Request):
-        return await request.body()
+        return await request.json()
 
     @app.post(
         "/get-online-features",
@@ -165,6 +166,56 @@ def get_app(
         return MessageToDict(
             response.proto, preserving_proto_field_name=True, float_precision=18
         )
+    
+
+    @app.post(
+        "/get-historical-features",
+        dependencies=[Depends(inject_user_details)],
+    )
+    def get_historical_features(body=Depends(get_body)):
+        full_feature_names = body.get("full_feature_names", False)
+        timestamp_field_name = body["timestamp_field"]
+        body["entity_df"][timestamp_field_name] = \
+            [datetime.fromtimestamp(t) for t in body["entity_df"][timestamp_field_name]]
+        entity_df = pd.DataFrame(body["entity_df"])
+        # Initialize parameters for FeatureStore.get_online_features(...) call
+        if "feature_service" in body:
+            feature_service = store.get_feature_service(
+                body["feature_service"], allow_cache=True
+            )
+            assert_permissions(
+                resource=feature_service, actions=[AuthzedAction.READ_OFFLINE]
+            )
+            features = feature_service
+        else:
+            features = body["features"]
+            all_feature_views, all_on_demand_feature_views = (
+                utils._get_feature_views_to_use(
+                    store.registry,
+                    store.project,
+                    features,
+                    allow_cache=True,
+                    hide_dummy_entity=False,
+                )
+            )
+            for feature_view in all_feature_views:
+                assert_permissions(
+                    resource=feature_view, actions=[AuthzedAction.READ_OFFLINE]
+                )
+            for od_feature_view in all_on_demand_feature_views:
+                assert_permissions(
+                    resource=od_feature_view, actions=[AuthzedAction.READ_OFFLINE]
+                )
+
+        response = store.get_historical_features(
+            features=features,
+            entity_df=pd.DataFrame(entity_df),
+            full_feature_names=full_feature_names,
+        ).to_df()
+
+        response_json = response.to_json()
+        return response_json
+
 
     @app.post("/push", dependencies=[Depends(inject_user_details)])
     async def push(body=Depends(get_body)):

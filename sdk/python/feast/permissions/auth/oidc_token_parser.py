@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional
+from typing import Optional, List
 from unittest.mock import Mock
 
 import jwt
@@ -50,7 +50,8 @@ class OidcTokenParser(TokenParser):
 
         await oauth_2_scheme(request=request)
 
-    async def user_details_from_access_token(self, access_token: str) -> User:
+    async def user_details_from_access_token(self, access_token: str, 
+                                             default_roles: Optional[List[str]] = None) -> User:
         """
         Validate the access token then decode it to extract the user credential and roles.
 
@@ -102,13 +103,17 @@ class OidcTokenParser(TokenParser):
             if "resource_access" not in data:
                 logger.warning("Missing resource_access field in access token.")
             client_id = self._auth_config.client_id
-            if client_id not in data["resource_access"]:
-                logger.warning(
-                    f"Missing resource_access.{client_id} field in access token. Defaulting to empty roles."
-                )
-                roles = []
-            else:
-                roles = data["resource_access"][client_id]["roles"]
+            #if client_id not in data["resource_access"]:
+            #    logger.warning(
+            #        f"Missing resource_access.{client_id} field in access token. Defaulting to empty roles."
+            #    )
+            #    roles = []
+            #else:
+            #    roles = data["resource_access"][client_id]["roles"]
+            if "roles" in data.keys():
+                roles = roles = [role for role in data["roles"]]
+                if default_roles:
+                    roles = [r for r in roles if r not in default_roles]
 
             logger.info(f"Extracted user {current_user} and roles {roles}")
             return User(username=current_user, roles=roles)

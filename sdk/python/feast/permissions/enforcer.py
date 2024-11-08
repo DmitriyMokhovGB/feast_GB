@@ -2,7 +2,7 @@ import logging
 
 from feast.errors import FeastPermissionError
 from feast.feast_object import FeastObject
-from feast.permissions.decision import DecisionEvaluator
+#from feast.permissions.decision import DecisionEvaluator
 from feast.permissions.permission import (
     AuthzedAction,
     Permission,
@@ -47,34 +47,24 @@ def enforce_policy(
         logger.debug(
             f"Enforcing permission policies for {type(resource).__name__}:{resource.name} to execute {actions}"
         )
-        matching_permissions = [
-            p
-            for p in permissions
-            if p.match_resource(resource) and p.match_actions(actions)
-        ]
 
-        if matching_permissions:
-            evaluator = DecisionEvaluator(len(matching_permissions))
-            for p in matching_permissions:
-                permission_grant, permission_explanation = p.policy.validate_user(
+        resource_permissions = [p for p in permissions if p in resource.permissions]
+        matching_permissions = []
+        denial_explanations = []
+
+        for p in resource_permissions:
+            permission_grant, permission_explanation = p.policy.validate_user(
                     user=user
                 )
-                evaluator.add_grant(
-                    permission_grant,
-                    f"Permission {p.name} denied execution of {[a.value.upper() for a in actions]} to {type(resource).__name__}:{resource.name}: {permission_explanation}",
-                )
+            if permission_grant:
+                matching_permissions.append(p)
+            else:
+                denial_explanations.append(f"Permission {p.name} denied for a reason: {permission_explanation}")
 
-                if evaluator.is_decided():
-                    grant, explanations = evaluator.grant()
-                    if not grant and not filter_only:
-                        logger.error(f"Permission denied: {','.join(explanations)}")
-                        raise FeastPermissionError(",".join(explanations))
-                    if grant:
-                        logger.debug(
-                            f"Permission granted for {type(resource).__name__}:{resource.name}"
-                        )
-                        _permitted_resources.append(resource)
-                    break
+        matching_permissions = [p for p in matching_permissions if p.match_actions(actions)]
+
+        if matching_permissions:
+            _permitted_resources.append(resource)
         else:
             message = f"No permissions defined to manage {actions} on {type(resource)}/{resource.name}."
             logger.exception(f"**PERMISSION NOT GRANTED**: {message}")

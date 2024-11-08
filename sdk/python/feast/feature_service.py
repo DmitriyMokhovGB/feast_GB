@@ -6,6 +6,7 @@ from typeguard import typechecked
 
 from feast.base_feature_view import BaseFeatureView
 from feast.errors import FeatureViewMissingDuringFeatureServiceInference
+from feast.permissions.permission import Permission
 from feast.feature_logging import LoggingConfig
 from feast.feature_view import FeatureView
 from feast.feature_view_projection import FeatureViewProjection
@@ -43,6 +44,7 @@ class FeatureService:
     _features: List[Union[FeatureView, OnDemandFeatureView]]
     feature_view_projections: List[FeatureViewProjection]
     description: str
+    permissions: Optional[List[Permission]]
     tags: Dict[str, str]
     owner: str
     created_timestamp: Optional[datetime] = None
@@ -56,6 +58,7 @@ class FeatureService:
         features: List[Union[FeatureView, OnDemandFeatureView]],
         tags: Optional[Dict[str, str]] = None,
         description: str = "",
+        permissions: Optional[List[Permission]] = None,
         owner: str = "",
         logging_config: Optional[LoggingConfig] = None,
     ):
@@ -67,6 +70,8 @@ class FeatureService:
             feature_view_projections: A list containing feature views and feature view
                 projections, representing the features in the feature service.
             description (optional): A human-readable description.
+            permissions: list of Permission objects that regulate the privilages of certain 
+                roles to perform various actions on a given view
             tags (optional): A dictionary of key-value pairs to store arbitrary metadata.
             owner (optional): The owner of the feature view, typically the email of the
                 primary maintainer.
@@ -197,6 +202,9 @@ class FeatureService:
             name=feature_service_proto.spec.name,
             features=[],
             tags=dict(feature_service_proto.spec.tags),
+            permissions = [
+                Permission.from_proto(p) for p in feature_service_proto.spec.permissions
+            ],
             description=feature_service_proto.spec.description,
             owner=feature_service_proto.spec.owner,
             logging_config=LoggingConfig.from_proto(
@@ -238,6 +246,9 @@ class FeatureService:
             name=self.name,
             features=[
                 projection.to_proto() for projection in self.feature_view_projections
+            ],
+            permissions=[
+                permission.to_proto() for permission in self.permissions
             ],
             tags=self.tags,
             description=self.description,

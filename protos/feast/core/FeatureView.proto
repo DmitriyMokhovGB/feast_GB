@@ -26,6 +26,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "feast/core/DataSource.proto";
 import "feast/core/Feature.proto";
+import "feast/core/Permission.proto";
 
 message FeatureView {
     // User-specified specifications of this feature view.
@@ -51,16 +52,19 @@ message FeatureViewSpec {
     repeated FeatureSpecV2 features = 4;
 
     // List of specifications for each entity defined as part of this feature view.
-    repeated FeatureSpecV2 entity_columns = 12;
+    repeated FeatureSpecV2 entity_columns = 13;
 
     // Description of the feature view.
     string description = 10;
+
+    // List of Permission objects that define access to service
+    repeated Permission permissions = 11;
 
     // User defined metadata
     map<string,string> tags = 5;
 
     // Owner of the feature view.
-    string owner = 11;
+    string owner = 12;
 
     // Features in this feature view can only be retrieved from online serving
     // younger than ttl. Ttl is measured as the duration of time between

@@ -7,6 +7,7 @@ option java_package = "feast.proto.core";
 
 import "google/protobuf/timestamp.proto";
 import "feast/core/FeatureViewProjection.proto";
+import "feast/core/Permission.proto";
 
 message FeatureService {
   // User-specified specifications of this feature service.
@@ -30,14 +31,17 @@ message FeatureServiceSpec {
   // User defined metadata
   map<string,string> tags = 4;
 
+  // List of Permission objects that define access to service
+  repeated Permission permissions = 5;
+
   // Description of the feature service.
-  string description = 5;
+  string description = 6;
 
   // Owner of the feature service.
-  string owner = 6;
+  string owner = 7;
 
   // (optional) if provided logging will be enabled for this feature service.
-  LoggingConfig logging_config = 7;
+  LoggingConfig logging_config = 8;
 }
 
 

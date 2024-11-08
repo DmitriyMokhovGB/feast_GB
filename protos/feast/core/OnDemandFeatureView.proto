@@ -28,6 +28,7 @@ import "feast/core/FeatureViewProjection.proto";
 import "feast/core/Feature.proto";
 import "feast/core/DataSource.proto";
 import "feast/core/Transformation.proto";
+import "feast/core/Permission.proto";
 
 message OnDemandFeatureView {
     // User-specified specifications of this feature view.
@@ -57,11 +58,14 @@ message OnDemandFeatureViewSpec {
     // Description of the on demand feature view.
     string description = 6;
 
+    // List of Permission objects that define access to service
+    repeated Permission permissions = 7;
+
     // User defined metadata.
-    map<string,string> tags = 7;
+    map<string,string> tags = 8;
 
     // Owner of the on demand feature view.
-    string owner = 8;
+    string owner = 9;
     string mode = 11;
     bool write_to_online_store = 12;
 

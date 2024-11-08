@@ -17,6 +17,7 @@ from feast.errors import RegistryInferenceFailure, SpecifiedFeaturesNotPresentEr
 from feast.feature_view import DUMMY_ENTITY_NAME, FeatureView
 from feast.feature_view_projection import FeatureViewProjection
 from feast.field import Field, from_value_type
+from feast.permissions.permission import Permission
 from feast.protos.feast.core.OnDemandFeatureView_pb2 import (
     OnDemandFeatureView as OnDemandFeatureViewProto,
 )
@@ -56,6 +57,8 @@ class OnDemandFeatureView(BaseFeatureView):
             sources with type RequestSource.
         feature_transformation: The user defined transformation.
         description: A human-readable description.
+        permissions: list of Permission objects that regulate the privilages of certain 
+            roles to perform various actions on a given view
         tags: A dictionary of key-value pairs to store arbitrary metadata.
         owner: The owner of the on demand feature view, typically the email of the primary
             maintainer.
@@ -71,6 +74,7 @@ class OnDemandFeatureView(BaseFeatureView):
     ]
     mode: str
     description: str
+    permissions: Optional[List[Permission]]
     tags: dict[str, str]
     owner: str
     write_to_online_store: bool
@@ -95,6 +99,7 @@ class OnDemandFeatureView(BaseFeatureView):
         ],
         mode: str = "pandas",
         description: str = "",
+        permissions: Optional[List[Permission]] = None,
         tags: Optional[dict[str, str]] = None,
         owner: str = "",
         write_to_online_store: bool = False,
@@ -116,6 +121,8 @@ class OnDemandFeatureView(BaseFeatureView):
             feature_transformation: The user defined transformation.
             mode: Mode of execution (e.g., Pandas or Python native)
             description (optional): A human-readable description.
+            permissions: list of Permission objects that regulate the privilages of certain 
+                roles to perform various actions on a given view
             tags (optional): A dictionary of key-value pairs to store arbitrary metadata.
             owner (optional): The owner of the on demand feature view, typically the email
                 of the primary maintainer.
@@ -132,6 +139,7 @@ class OnDemandFeatureView(BaseFeatureView):
 
         schema = schema or []
         self.entities = [e.name for e in entities] if entities else [DUMMY_ENTITY_NAME]
+        self.permissions = permissions
         self.mode = mode.lower()
 
         if self.mode not in {"python", "pandas", "substrait"}:
@@ -325,6 +333,9 @@ class OnDemandFeatureView(BaseFeatureView):
             feature_transformation=feature_transformation,
             mode=self.mode,
             description=self.description,
+            permissions=[
+                permission.to_proto() for permission in self.permissions
+            ],
             tags=self.tags,
             owner=self.owner,
             write_to_online_store=self.write_to_online_store,
@@ -448,6 +459,9 @@ class OnDemandFeatureView(BaseFeatureView):
             feature_transformation=transformation,
             mode=on_demand_feature_view_proto.spec.mode or "pandas",
             description=on_demand_feature_view_proto.spec.description,
+            permissions = [
+                Permission.from_proto(p) for p in on_demand_feature_view_proto.spec.permissions
+            ],
             tags=dict(on_demand_feature_view_proto.spec.tags),
             owner=on_demand_feature_view_proto.spec.owner,
             write_to_online_store=write_to_online_store,
@@ -710,6 +724,7 @@ def on_demand_feature_view(
     ],
     mode: str = "pandas",
     description: str = "",
+    permissions: Optional[List[Permission]] = None,
     tags: Optional[dict[str, str]] = None,
     owner: str = "",
     write_to_online_store: bool = False,
@@ -771,6 +786,7 @@ def on_demand_feature_view(
             feature_transformation=transformation,
             mode=mode,
             description=description,
+            permissions=permissions,
             tags=tags,
             owner=owner,
             write_to_online_store=write_to_online_store,

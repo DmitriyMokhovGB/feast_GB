@@ -26,6 +26,7 @@ from feast.data_source import DataSource, KafkaSource, KinesisSource, PushSource
 from feast.entity import Entity
 from feast.feature_view_projection import FeatureViewProjection
 from feast.field import Field
+from feast.permissions.permission import Permission
 from feast.protos.feast.core.FeatureView_pb2 import FeatureView as FeatureViewProto
 from feast.protos.feast.core.FeatureView_pb2 import (
     FeatureViewMeta as FeatureViewMetaProto,
@@ -93,6 +94,7 @@ class FeatureView(BaseFeatureView):
     features: List[Field]
     online: bool
     description: str
+    permissions: Optional[List[Permission]]
     tags: Dict[str, str]
     owner: str
     materialization_intervals: List[Tuple[datetime, datetime]]
@@ -107,6 +109,7 @@ class FeatureView(BaseFeatureView):
         ttl: Optional[timedelta] = timedelta(days=0),
         online: bool = True,
         description: str = "",
+        permissions: Optional[List[Permission]] = None,
         tags: Optional[Dict[str, str]] = None,
         owner: str = "",
     ):
@@ -136,6 +139,7 @@ class FeatureView(BaseFeatureView):
         """
         self.name = name
         self.entities = [e.name for e in entities] if entities else [DUMMY_ENTITY_NAME]
+        self.permissions = permissions
         self.ttl = ttl
         schema = schema or []
 
@@ -350,6 +354,9 @@ class FeatureView(BaseFeatureView):
             entity_columns=[field.to_proto() for field in self.entity_columns],
             features=[field.to_proto() for field in self.features],
             description=self.description,
+            permissions=[
+                permission.to_proto() for permission in self.permissions
+            ],
             tags=self.tags,
             owner=self.owner,
             ttl=(ttl_duration if ttl_duration is not None else None),
@@ -400,6 +407,9 @@ class FeatureView(BaseFeatureView):
         feature_view = cls(
             name=feature_view_proto.spec.name,
             description=feature_view_proto.spec.description,
+            permissions = [
+                Permission.from_proto(p) for p in feature_view_proto.spec.permissions
+            ],
             tags=dict(feature_view_proto.spec.tags),
             owner=feature_view_proto.spec.owner,
             online=feature_view_proto.spec.online,
